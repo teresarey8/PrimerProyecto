@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productos</title>
+    <!-- Enlace a Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <h1 class="mb-4">Lista de Productos</h1>
+
+    <p th:if="${#lists.isEmpty(productos)}" class="alert alert-warning">No hay productos</p>
+
+    <ul class="list-group">
+        <li class="list-group-item" th:each="producto : ${productos}">
+            <span th:text="${producto.titulo}"></span>
+            <div class="float-right">
+                <a th:href="@{/productos/del/{id}(id=${producto.id})}" class="btn btn-danger btn-sm">Borrar</a>
+                <a th:href="@{/productos/edit/{id}(id=${producto.id})}" class="btn btn-warning btn-sm">Editar</a>
+                <a th:href="@{/productos/view/{id}(id=${producto.id})}" class="btn btn-info btn-sm">Ver</a>
+            </div>
+        </li>
+    </ul>
+
+    <div class="mt-4">
+        <a th:href="@{/productos/add}" class="btn btn-success">Cargar productos</a>
+        <a th:href="@{/productos/new}" class="btn btn-primary">Insertar productos</a>
+    </div>
+</div>
+
+<!-- Enlaza Bootstrap JS y jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
