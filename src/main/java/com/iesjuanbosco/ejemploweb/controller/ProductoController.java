@@ -1,16 +1,20 @@
 package com.iesjuanbosco.ejemploweb.controller;
 
+import com.iesjuanbosco.ejemploweb.entity.Categoria;
+import com.iesjuanbosco.ejemploweb.entity.Comentario;
 import com.iesjuanbosco.ejemploweb.entity.Producto;
+import com.iesjuanbosco.ejemploweb.repository.CategoriaRepository;
+import com.iesjuanbosco.ejemploweb.repository.ComentarioRepository;
 import com.iesjuanbosco.ejemploweb.repository.ProductoRepository;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*;
-import org.thymeleaf.model.IModel;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 
-import javax.naming.Binding;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,121 +22,138 @@ import java.util.Optional;
 @Controller
 public class ProductoController {
 
-    //GET: Se utiliza para obtener datos y mostrar la vista x del producto.
-    //POST: Se utiliza para enviar los datos del formulario y actualizar el producto en la base de datos.
-
-    //Para acceder al repositorio creamos una propiedad y la asignamos en el constructor, el repositorio
-    //es la base de datos
+    private final ComentarioRepository comentarioRepository;
+    //Para acceder al repositorio creamos una propiedad y la asignamos en el constructor
     private ProductoRepository productoRepository;
+    private CategoriaRepository categoriaRepository;
 
-    public ProductoController(ProductoRepository repository){
-        this.productoRepository = repository;
-    }
-    //MAPEANDO RUTAS, QUIERO QUE SI EL USUARIO ACCEDE A /PRODUCTOS2, QUIERO QUE RESPONDA ESTE CONTROLADOR
-    @GetMapping("/productos2")    //Anotación que indica la URL localhost:8080/productos2 mediante GET
-    @ResponseBody       //Anotación que indica que no pase por el motor de plantillas thymeleaf sino que voy a devolver yo el HTML diréctamente
-    public String index(){
-        List<Producto> productos = this.productoRepository.findAll();
-        StringBuilder HTML = new StringBuilder("<html><body>");
-        productos.forEach(producto -> {
-            HTML.append("<p>" + producto.getTitulo() + "</p>");
-        });
-        HTML.append("</body></html>");
+    public ProductoController(ProductoRepository productoRepository, CategoriaRepository categoriaRepository, ComentarioRepository comentarioRepository){
 
-        return HTML.toString();
+        this.productoRepository = productoRepository;
+        this.categoriaRepository = categoriaRepository;
+        this.comentarioRepository = comentarioRepository;
     }
 
     /* Con la anotación GetMapping le indicamos a Spring que el siguiente método
        se va a ejecutar cuando el usuario acceda a la URL http://localhost/productos */
     @GetMapping("/productos")
     public String findAll(Model model){
-        //LE DECIMOS QUEENCUENTRE TODOS LOS PRODUCTOS Y LO METEMOS EN ARRAY
         List<Producto> productos = this.productoRepository.findAll();
-
-        //y pasamos los datos a la vista
+        //le pasamos todas las categorias a la vista, para el filtro
+        List<Categoria> categorias = this.categoriaRepository.findAll();
+        //Pasamos los datos a la vista
         model.addAttribute("productos",productos);
-        //nombre de lista creada en el template, por defecto será aqui, pero si queremos redirigir ps lo podemos hacer, mas abajo, redirect
+        model.addAttribute("titulo","Titulo de página");
+        //ya tengo las categorias ahora se las añado al modelo y salen
+        model.addAttribute("categorias",categorias);
+
         return "producto-list";
     }
-    //para añadir productos a mano
-    @GetMapping("/productos/add")
-    public String add(){
-        List<Producto> productos = new ArrayList<Producto>();
-        Producto p1 = new Producto(null, "Producto 1", 20, 45.5);
-        Producto p2 = new Producto(null, "Producto 2", 50, 5.0);
-        Producto p3 = new Producto(null, "Producto 3", 30, 50.5);
-        Producto p4 = new Producto(null, "Producto 4", 10, 30.0);
-        productos.add(p1);
-        productos.add(p2);
-        productos.add(p3);
-        productos.add(p4);
 
-        //Guardamos todos los productos en la base  datos utilizando el objeto productoRepository
-        this.productoRepository.saveAll(productos);
-
-        //Redirige al controlador /productos
-        return "redirect:/productos";
-
-    }
+    //Borra un producto a partir del id de la ruta
     @GetMapping("/productos/del/{id}")
-    //cuando haya una url que sea /productos/del/algo que entre aqui y ya utilizarlo para borrar
     public String delete(@PathVariable Long id){
-        //borrar el producto usando el repositorio
-        //el id se pasa de una pagina a otra a traves de la barra de direcciones, arriba
+        //Borrar el producto usando el repositorio
         productoRepository.deleteById(id);
-        //redirigir al listado de productos
+        //Redirigir al listado de getProductos: /getProductos
         return "redirect:/productos";
     }
+
+    //Muestra un producto a partir del id de la ruta
     @GetMapping("/productos/view/{id}")
     public String view(@PathVariable Long id, Model model){
-        //obtenemos el productos de bd a partir del id de la barra de direcciones
+        //Obtenemos el producto de la BD a partir del id de la barra de direcciones
         Optional<Producto> producto = productoRepository.findById(id);
-        if (producto.isPresent()){
-            //mandamos el porducto a la vista
+        if(producto.isPresent()){
+            //Mandamos el producto y el comentario a la vista
+            List <Comentario> comentarios = comentarioRepository.findByProducto(producto.get());
             model.addAttribute("producto",producto.get());
+            model.addAttribute("comentarios", comentarios);
+            model.addAttribute("comentario", new Comentario());
             return "producto-view";
-        }else{
+        }
+        else{
             return "redirect:/productos";
         }
     }
-
+    /*
+    @PostMapping("/productos/view/{id}/comentarios")
+    public String addComentario(@PathVariable Long id, @ModelAttribute("nuevoComentario") Comentario comentario, Model model) {
+        Producto producto = productoRepository.findById(id).orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+        comentario.setProducto(producto);
+        comentarioRepository.save(comentario);  // Guardar el comentario
+        //recargo los comentarios en el modelo
+        List<Comentario> comentarios = comentarioRepository.findByProducto(producto);
+        model.addAttribute("comentarios",comentarios);
+        return "redirect:/productos/view/{id}/comentarios";
+    }
+    */
     @GetMapping("/productos/new")
     public String newProducto(Model model){
+    //le paso un objeto vacio
         model.addAttribute("producto", new Producto());
+        //le añado el objeto categorias, para que salgan todas las categorias que hay y eliga
+        model.addAttribute("categorias", categoriaRepository.findAll());
         return "producto-new";
     }
 
-    //este lo inserta en la base de datos
     @PostMapping("/productos/new")
-    public String newProductoInsert(@Valid Producto producto, BindingResult bindingResult){
+    public String newProductoInsert(Model model ,@Valid Producto producto, BindingResult bindingResult){
         //Si ha habido errores de validación volvemos a mostrar el formulario
         if(bindingResult.hasErrors()){
+            Sort sort = Sort.by("nombre").ascending();
+            model.addAttribute("categorias", categoriaRepository.findAll(sort));
             return "producto-new";
         }
+
         //Si no ha habido errores de validación insertamos los datos en la BD
         productoRepository.save(producto);
-        //Redirigimos a /productos
+        //Redirigimos a /getProductos
+
         return "redirect:/productos";
     }
+
     @GetMapping("/productos/edit/{id}")
-                            //dice que tiene que coger el id de la barra de direcciones
-    public String newProducto(@PathVariable Long id, Model model){
-        //para ver ese producto lo tendré que coger de nuestra base de datos, que es repositorio
-        //se conecta a la bd, busca el producto con ese id y me lo devuelve
+    public String editProducto(@PathVariable Long id, Model model){
         Optional<Producto> producto = productoRepository.findById(id);
-        if (producto.isPresent()) {
-            //pasamos el objeto a la vista
-            model.addAttribute("producto", producto.get());
+        if(producto.isPresent()){
+            //Pasamos el objeto a la vista
+            model.addAttribute("producto",producto.get());
             return "producto-edit";
         }
-            return "redirect:/productos";
+
+        return "redirect:/productos";
     }
+
     @PostMapping("/productos/edit/{id}")
-    public String newProductoUpdate(@PathVariable Long id,
+    public String editProductoUpdate(@PathVariable Long id,
                                     Producto producto){
         producto.setId(id);
         productoRepository.save(producto);
         return "redirect:/productos";
     }
 
+    @GetMapping("/productos/categoria/{id}")
+    public String findAll(Model model, @PathVariable Long id) {
+
+        if(id.equals(-1L)){
+            return "redirect:/productos";
+        }
+        Optional<Categoria> categoriaSeleccionada = categoriaRepository.findById(id);
+        if (categoriaSeleccionada.isPresent()) {
+            List<Producto> productos = this.productoRepository.findByCategoria(categoriaSeleccionada.get());
+            List<Categoria> categorias = this.categoriaRepository.findAll();
+            //Pasamos todos los datos necesarios a la vista
+            //Pasamos el id de la categoría seleccionada, lo paso para que thymeleaf me ponga el selected="selected"
+            //en la categoría que estamos y aparezca seleccionada en el desplegable
+            model.addAttribute("selectedCategoriaId", id);
+            model.addAttribute("productos", productos);
+            model.addAttribute("categorias", categorias);
+
+            return "producto-list";
+        } else {
+            //Categoría seleccionada no existe, redirijo a listado de productos
+            return "redirect:/productos";
+        }
+    }
 }
